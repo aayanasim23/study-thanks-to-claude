@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IB CS OOP Practice</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+  :root {
+    --bg:#0a0b0f; --surface:#12151e; --surface2:#1a1e2a; --border:#1f2535;
+    --accent:#5ee7a0; --accent2:#f5a623; --accent3:#5b9cf6; --accent4:#e05aff;
+    --text:#dce4f5; --muted:#4a5570; --error:#f05060;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;padding:20px;max-width:820px;margin:0 auto;}
+
+  /* MENU */
+  .screen{display:none;}
+  .menu-header{text-align:center;padding:36px 0 28px;}
+  .menu-header h1{font-size:30px;font-weight:800;letter-spacing:-1px;margin-bottom:6px;}
+  .menu-header h1 span{color:var(--accent);}
+  .menu-header p{color:var(--muted);font-size:13px;}
+  .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .menu-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all 0.18s;text-align:left;}
+  .menu-card:hover{transform:translateY(-2px);}
+  .menu-card.mc:hover{border-color:var(--accent3);}
+  .menu-card.def:hover{border-color:var(--accent4);}
+  .menu-card.code:hover{border-color:var(--accent);}
+  .menu-card.mix:hover{border-color:var(--accent2);}
+  .menu-icon{font-size:26px;margin-bottom:8px;}
+  .menu-card h2{font-size:15px;font-weight:800;margin-bottom:4px;}
+  .menu-card p{font-size:11px;color:var(--muted);line-height:1.5;}
+  .menu-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 8px;border-radius:20px;margin-top:8px;}
+  .mc .menu-tag{background:rgba(91,156,246,0.12);color:var(--accent3);}
+  .def .menu-tag{background:rgba(224,90,255,0.1);color:var(--accent4);}
+  .code .menu-tag{background:rgba(94,231,160,0.1);color:var(--accent);}
+  .mix .menu-tag{background:rgba(245,166,35,0.1);color:var(--accent2);}
+  .menu-card-full{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+  .menu-card-full:hover{border-color:var(--accent2);transform:translateY(-2px);}
+  .menu-card-full h2{font-size:14px;font-weight:800;margin-bottom:3px;}
+  .menu-card-full p{font-size:11px;color:var(--muted);}
+
+  /* STATS CARD */
+  .stats-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;}
+  .stats-card h3{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+  .stats-row{display:flex;gap:0;flex-wrap:wrap;}
+  .stat-item{flex:1;min-width:80px;text-align:center;padding:8px 4px;}
+  .stat-item b{display:block;font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+  .stat-item span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+  .stat-item.green b{color:var(--accent);}
+  .stat-item.red b{color:var(--error);}
+  .stat-item.yellow b{color:var(--accent2);}
+  .stat-item.blue b{color:var(--accent3);}
+
+  /* WRONG QUEUE BADGE */
+  .queue-badge{background:rgba(240,80,96,0.12);border:1px solid rgba(240,80,96,0.3);border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .queue-badge span{font-size:13px;color:#f08090;}
+  .queue-badge b{color:var(--error);}
+  .btn-drill{background:var(--error);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;}
+  .btn-drill:hover{background:#f07080;}
+
+  /* SYNC */
+  .sync-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;}
+  .sync-card h3{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .sync-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .sync-code-box{flex:1;background:#070810;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);word-break:break-all;min-height:36px;line-height:1.5;}
+  .btn-sm{background:transparent;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 14px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;}
+  .btn-sm:hover{border-color:var(--accent3);color:var(--accent3);}
+  .btn-sm.green{border-color:rgba(94,231,160,0.4);color:var(--accent);}
+  .btn-sm.green:hover{background:rgba(94,231,160,0.07);}
+  textarea.sync-input{width:100%;background:#070810;border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;resize:none;outline:none;margin-top:8px;height:60px;}
+  textarea.sync-input:focus{border-color:var(--accent3);}
+
+  /* TOPBAR */
+  .topbar{display:flex;justify-content:space-between;align-items:center;padding:0 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px;}
+  .topbar-left{display:flex;align-items:center;gap:10px;}
+  .back-btn{background:transparent;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+  .back-btn:hover{border-color:var(--muted);color:var(--text);}
+  .quiz-title{font-size:13px;font-weight:700;color:var(--muted);}
+  .topbar-right{display:flex;gap:14px;font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;align-items:center;}
+  .topbar-right b{color:var(--text);font-size:14px;display:block;}
+  .wrong-pill{background:rgba(240,80,96,0.15);border:1px solid rgba(240,80,96,0.3);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--error);font-weight:700;}
+
+  .progress-track{height:3px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent3),var(--accent));border-radius:2px;transition:width 0.4s ease;}
+
+  /* CARD */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:12px;}
+  .type-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:10px;}
+  .type-mc{background:rgba(91,156,246,0.12);color:var(--accent3);border:1px solid rgba(91,156,246,0.25);}
+  .type-code{background:rgba(94,231,160,0.1);color:var(--accent);border:1px solid rgba(94,231,160,0.2);}
+  .type-def{background:rgba(224,90,255,0.1);color:var(--accent4);border:1px solid rgba(224,90,255,0.2);}
+  .type-output{background:rgba(245,166,35,0.1);color:var(--accent2);border:1px solid rgba(245,166,35,0.2);}
+  .retry-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:10px;margin-left:6px;background:rgba(240,80,96,0.12);color:var(--error);border:1px solid rgba(240,80,96,0.3);}
+
+  .q-title{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-0.4px;line-height:1.3;}
+  .q-concept{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+  .code-block{background:#070810;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;margin-bottom:12px;overflow-x:auto;white-space:pre;}
+  .kw{color:#5b9cf6}.cl{color:#f5a623}.str{color:#5ee7a0}.cm{color:#3a4560}.num{color:#e05aff}
+  .q-prompt{font-size:13px;color:#aab8d0;line-height:1.7;margin-bottom:12px;white-space:pre-wrap;}
+
+  .mc-options{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;}
+  .mc-option{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 13px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);transition:all 0.15s;display:flex;align-items:center;gap:10px;text-align:left;}
+  .mc-option:hover{border-color:var(--accent3);background:rgba(91,156,246,0.06);}
+  .mc-option.correct{border-color:var(--accent);background:rgba(94,231,160,0.1);color:var(--accent);pointer-events:none;}
+  .mc-option.wrong{border-color:var(--error);background:rgba(240,80,96,0.08);color:var(--error);pointer-events:none;}
+  .mc-option.locked{pointer-events:none;}
+  .opt-letter{width:22px;height:22px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;font-family:'Syne',sans-serif;}
+  .mc-explain{background:rgba(94,231,160,0.06);border:1px solid rgba(94,231,160,0.2);border-radius:8px;padding:10px 13px;font-size:12px;color:#8ad8b8;line-height:1.65;margin-top:8px;display:none;}
+
+  .input-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:5px;}
+  textarea.code-input{width:100%;min-height:110px;background:#070810;border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;padding:12px;resize:vertical;outline:none;transition:border-color 0.2s;tab-size:4;margin-bottom:10px;-webkit-autocorrect:off;autocorrect:off;spellcheck:false;}
+  textarea.code-input:focus{border-color:var(--accent3);}
+
+  .solution-box{background:#070810;border:1px solid rgba(94,231,160,0.25);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;display:none;margin-bottom:10px;}
+  .solution-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;font-family:'Syne',sans-serif;}
+  .hint-box{background:rgba(91,156,246,0.06);border:1px solid rgba(91,156,246,0.18);border-radius:8px;padding:10px 13px;font-size:12px;color:#7aabf0;font-family:'JetBrains Mono',monospace;margin-bottom:10px;display:none;line-height:1.6;}
+
+  .feedback{border-radius:10px;padding:12px 15px;font-size:13px;line-height:1.7;margin-top:10px;display:none;}
+  .feedback.good{background:rgba(94,231,160,0.07);border:1px solid rgba(94,231,160,0.3);}
+  .feedback.bad{background:rgba(240,80,96,0.07);border:1px solid rgba(240,80,96,0.25);}
+  .feedback.loading{background:rgba(91,156,246,0.07);border:1px solid rgba(91,156,246,0.25);}
+  .feedback-title{font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+  .feedback.good .feedback-title{color:var(--accent);}
+  .feedback.bad .feedback-title{color:var(--error);}
+  .feedback.loading .feedback-title{color:var(--accent3);}
+  .feedback-body{color:#aab8d0;line-height:1.65;}
+
+  button{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;border:none;border-radius:8px;cursor:pointer;padding:9px 16px;transition:all 0.15s;letter-spacing:0.2px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .btn-primary{background:var(--accent);color:#041008;}
+  .btn-primary:hover{background:#7aedb5;}
+  .btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-next{background:var(--accent2);color:#0d0800;display:none;}
+  .btn-next:hover{background:#f7be5c;}
+  .btn-secondary{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+  .btn-secondary:hover{border-color:var(--muted);color:var(--text);}
+  .btn-hint{background:transparent;border:1.5px solid rgba(91,156,246,0.4);color:var(--accent3);}
+  .btn-hint:hover{background:rgba(91,156,246,0.08);}
+  .btn-solution{background:transparent;border:1.5px solid rgba(94,231,160,0.3);color:var(--accent);}
+  .btn-solution:hover{background:rgba(94,231,160,0.07);}
+
+  .spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--accent3);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .complete{text-align:center;padding:50px 20px;}
+  .complete h2{font-size:50px;font-weight:800;color:var(--accent);margin-bottom:6px;}
+  .complete .sub{font-size:13px;color:var(--muted);margin-bottom:4px;}
+  .complete .grade{font-size:19px;font-weight:700;margin-bottom:20px;}
+  .complete .msg{font-size:13px;color:var(--muted);margin-bottom:24px;}
+  .btn-menu{background:var(--accent);color:#041008;padding:10px 28px;font-size:13px;margin-right:6px;}
+  .btn-again{background:transparent;border:1.5px solid var(--border);color:var(--muted);padding:10px 20px;font-size:13px;}
+  .btn-again:hover{border-color:var(--muted);color:var(--text);}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);z-index:999;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateY(0);}
+
+  @media(max-width:500px){.menu-grid{grid-template-columns:1fr;}.stats-row{flex-wrap:wrap;}}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- MENU SCREEN -->
+<div class="screen" id="menuScreen">
+  <div class="menu-header">
+    <h1>IB CS <span>OOP</span> Practice</h1>
+    <p>Pick what you want to drill</p>
+  </div>
+
+  <div class="stats-card" id="statsCard">
+    <h3>Your Progress</h3>
+    <div class="stats-row">
+      <div class="stat-item green"><b id="st_correct">0</b><span>correct</span></div>
+      <div class="stat-item red"><b id="st_wrong">0</b><span>wrong</span></div>
+      <div class="stat-item yellow"><b id="st_seen">0</b><span>seen</span></div>
+      <div class="stat-item blue"><b id="st_streak">0</b><span>streak</span></div>
+    </div>
+  </div>
+
+  <div class="queue-badge" id="queueBadge" style="display:none">
+    <span>🔥 You have <b id="queueCount">0</b> questions to retry</span>
+    <button class="btn-drill" onclick="startDrill()">Drill Wrong Answers</button>
+  </div>
+
+  <div class="menu-grid">
+    <div class="menu-card mc" onclick="startMode('output')">
+      <div class="menu-icon">🖥️</div>
+      <h2>Output Tracing</h2>
+      <p>Read code, pick what prints. Inheritance, scope, overriding, overloading.</p>
+      <span class="menu-tag">Multiple Choice</span>
+    </div>
+    <div class="menu-card def" onclick="startMode('concept')">
+      <div class="menu-icon">📖</div>
+      <h2>Concepts</h2>
+      <p>MC and short-answer on terminology — encapsulation, polymorphism, static, UML.</p>
+      <span class="menu-tag">MC + Writing</span>
+    </div>
+    <div class="menu-card code" onclick="startMode('code')">
+      <div class="menu-icon">✍️</div>
+      <h2>Write the Code</h2>
+      <p>Write Java from scratch. Constructors, getters, setters, subclasses, overrides.</p>
+      <span class="menu-tag">Coding</span>
+    </div>
+    <div class="menu-card mix" onclick="startMode('mix')">
+      <div class="menu-icon">🎲</div>
+      <h2>Full Mix</h2>
+      <p>Everything shuffled. Closest to the actual test.</p>
+      <span class="menu-tag">All Types</span>
+    </div>
+  </div>
+
+  <div class="menu-card-full" onclick="startMode('exam')">
+    <div class="menu-icon">🎯</div>
+    <div>
+      <h2>IB Paper 2 Style — Timed 20 min</h2>
+      <p>10 questions, all types, countdown timer. Most realistic prep.</p>
+    </div>
+  </div>
+
+  <!-- SYNC -->
+  <div class="sync-card">
+    <h3>📱 Sync Across Devices</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Copy your sync code and paste it on another device to carry over your progress and wrong-answer queue.</p>
+    <div class="sync-row">
+      <div class="sync-code-box" id="syncCodeDisplay">—</div>
+      <button class="btn-sm green" onclick="copySyncCode()">Copy</button>
+    </div>
+    <textarea class="sync-input" id="syncImportBox" placeholder="Paste sync code here to import progress..."></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;">
+      <button class="btn-sm" onclick="importSync()">Import Code</button>
+      <button class="btn-sm" onclick="resetProgress()" style="border-color:rgba(240,80,96,0.3);color:var(--error)">Reset Progress</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ SCREEN -->
+<div class="screen" id="quizScreen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="goMenu()">← Menu</button>
+      <div class="quiz-title" id="quizTitle"></div>
+    </div>
+    <div class="topbar-right">
+      <div id="timerDisplay" style="display:none;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent2)"></div>
+      <div><b id="statScore">0</b>score</div>
+      <div><b><span id="statQ">1</span>/<span id="statTotal">?</span></b>left</div>
+      <div id="wrongPillWrap"></div>
+    </div>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div id="mainArea"></div>
+  <div class="complete" id="completeScreen" style="display:none">
+    <h2 id="finalPct"></h2>
+    <div class="sub">You scored</div>
+    <div class="grade" id="finalScore"></div>
+    <div class="msg" id="finalMsg"></div>
+    <button class="btn-menu" onclick="goMenu()">← Back to Menu</button>
+    <button class="btn-again" onclick="rerun()">Go Again</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// QUESTION BANK
+// ═══════════════════════════════════════════════════
+const BANK = [
+  // OUTPUT
+  {id:'o1',cat:'output',concept:'Inheritance',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Animal</span> {
+  <span class="kw">public void</span> speak() { System.out.println(<span class="str">"..."</span>); }
+}
+<span class="kw">class</span> <span class="cl">Dog</span> <span class="kw">extends</span> <span class="cl">Animal</span> {
+  <span class="kw">public void</span> fetch() { System.out.println(<span class="str">"fetching"</span>); }
+}
+<span class="cl">Dog</span> d = <span class="kw">new</span> <span class="cl">Dog</span>();
+d.speak();`,
+   options:['fetching','...','fetching then ...','Compile error'],answer:1,
+   explanation:'Dog inherits speak() from Animal. Java looks in Dog first, no speak() found, goes up to Animal → prints "..."'},
+
+  {id:'o2',cat:'output',concept:'Method Overriding',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Animal</span> {
+  <span class="kw">public void</span> speak() { System.out.println(<span class="str">"..."</span>); }
+}
+<span class="kw">class</span> <span class="cl">Dog</span> <span class="kw">extends</span> <span class="cl">Animal</span> {
+  <span class="kw">public void</span> speak() { System.out.println(<span class="str">"Woof"</span>); }
+}
+<span class="cl">Dog</span> d = <span class="kw">new</span> <span class="cl">Dog</span>();
+d.speak();`,
+   options:['...','Woof','... then Woof','Compile error'],answer:1,
+   explanation:'Dog overrides speak(). Java finds Dog\'s version first → prints "Woof".'},
+
+  {id:'o3',cat:'output',concept:'Scope',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Box</span> {
+  <span class="kw">private int</span> x = <span class="num">10</span>;
+  <span class="kw">public void</span> methodA() {
+    <span class="kw">int</span> x = <span class="num">99</span>;
+    System.out.println(<span class="str">"A: "</span> + x);
+  }
+  <span class="kw">public void</span> methodB(<span class="kw">int</span> x) {
+    System.out.println(<span class="str">"B: "</span> + x);
+  }
+  <span class="kw">public void</span> methodC() {
+    System.out.println(<span class="str">"C: "</span> + x);
+  }
+}
+<span class="cl">Box</span> b = <span class="kw">new</span> <span class="cl">Box</span>();
+b.methodA(); b.methodB(5); b.methodC();`,
+   options:['A:10  B:5  C:10','A:99  B:5  C:10','A:99  B:10  C:10','A:99  B:5  C:99'],answer:1,
+   explanation:'methodA: local x=99 shadows instance x → 99. methodB: param x=5 shadows instance x → 5. methodC: no local x, uses instance x=10.'},
+
+  {id:'o4',cat:'output',concept:'Method Overloading',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Printer</span> {
+  <span class="kw">public void</span> print() { System.out.println(<span class="str">"zero"</span>); }
+  <span class="kw">public void</span> print(<span class="kw">int</span> n) { System.out.println(<span class="str">"one: "</span> + n); }
+  <span class="kw">public void</span> print(<span class="kw">int</span> n, <span class="cl">String</span> s) { System.out.println(<span class="str">"two"</span>); }
+}
+<span class="cl">Printer</span> p = <span class="kw">new</span> <span class="cl">Printer</span>();
+p.print(<span class="num">7</span>);`,
+   options:['zero','one: 7','zero then one: 7','Compile error'],answer:1,
+   explanation:'print(7) = one int → matches print(int n) only → prints "one: 7". Java picks ONE matching signature.'},
+
+  {id:'o5',cat:'output',concept:'Static vs Instance',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Counter</span> {
+  <span class="kw">private static int</span> count = <span class="num">0</span>;
+  <span class="kw">public</span> <span class="cl">Counter</span>() { count++; }
+  <span class="kw">public static int</span> getCount() { <span class="kw">return</span> count; }
+}
+<span class="kw">new</span> <span class="cl">Counter</span>();
+<span class="kw">new</span> <span class="cl">Counter</span>();
+<span class="kw">new</span> <span class="cl">Counter</span>();
+System.out.println(<span class="cl">Counter</span>.getCount());`,
+   options:['0','1','3','Compile error'],answer:2,
+   explanation:'count is static = one shared copy. Each new Counter() hits the same count++. After 3 objects: count = 3.'},
+
+  {id:'o6',cat:'output',concept:'Compile Error',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Sally</span> {
+  <span class="kw">public void</span> foo() { System.out.println(<span class="str">"Foo"</span>); }
+}
+<span class="kw">class</span> <span class="cl">Bob</span> <span class="kw">extends</span> <span class="cl">Sally</span> {
+  <span class="kw">public void</span> boo() { System.out.println(<span class="str">"Boo"</span>); }
+}
+<span class="cl">Sally</span> s = <span class="kw">new</span> <span class="cl">Sally</span>();
+s.boo();`,
+   options:['Boo','Foo','Nothing prints','Compile error — Sally has no boo()'],answer:3,
+   explanation:'boo() is in Bob, not Sally. s is a Sally object. Sally has no boo() → won\'t compile.'},
+
+  {id:'o7',cat:'output',concept:'super() + Inheritance',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Vehicle</span> {
+  <span class="kw">private</span> <span class="cl">String</span> brand;
+  <span class="kw">public</span> <span class="cl">Vehicle</span>(<span class="cl">String</span> b) { brand = b; }
+  <span class="kw">public</span> <span class="cl">String</span> getBrand() { <span class="kw">return</span> brand; }
+}
+<span class="kw">class</span> <span class="cl">Car</span> <span class="kw">extends</span> <span class="cl">Vehicle</span> {
+  <span class="kw">private int</span> doors;
+  <span class="kw">public</span> <span class="cl">Car</span>(<span class="cl">String</span> b, <span class="kw">int</span> d) { <span class="kw">super</span>(b); doors = d; }
+  <span class="kw">public int</span> getDoors() { <span class="kw">return</span> doors; }
+}
+<span class="cl">Car</span> c = <span class="kw">new</span> <span class="cl">Car</span>(<span class="str">"Toyota"</span>, <span class="num">4</span>);
+System.out.println(c.getBrand() + <span class="str">" "</span> + c.getDoors());`,
+   options:['null 4','Toyota 4','Toyota 0','Compile error'],answer:1,
+   explanation:'super("Toyota") passes brand to Vehicle\'s constructor. Car sets doors=4. Both getters work → "Toyota 4".'},
+
+  {id:'o8',cat:'output',concept:'Static vs Instance',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Plane</span> {
+  <span class="kw">private static int</span> total = <span class="num">0</span>;
+  <span class="kw">private int</span> seats;
+  <span class="kw">public</span> <span class="cl">Plane</span>(<span class="kw">int</span> s) { seats = s; total++; }
+  <span class="kw">public int</span> getSeats() { <span class="kw">return</span> seats; }
+  <span class="kw">public static int</span> getTotal() { <span class="kw">return</span> total; }
+}
+<span class="cl">Plane</span> a = <span class="kw">new</span> <span class="cl">Plane</span>(<span class="num">180</span>);
+<span class="cl">Plane</span> b = <span class="kw">new</span> <span class="cl">Plane</span>(<span class="num">220</span>);
+System.out.println(a.getSeats());
+System.out.println(<span class="cl">Plane</span>.getTotal());`,
+   options:['180 then 1','180 then 2','220 then 2','400 then 2'],answer:1,
+   explanation:'a.getSeats() = 180 (a\'s own seats). Plane.getTotal() = 2 (shared static, incremented twice).'},
+
+  // CONCEPTS
+  {id:'c1',cat:'concept',concept:'Terminology',title:'Which one is overriding?',
+   prompt:'A subclass writes a method with the exact same name AND same parameters as one in its parent, replacing the parent\'s behavior. What is this?',
+   options:['Method Overloading','Encapsulation','Method Overriding','Scope'],answer:2,
+   explanation:'Overriding = same name + same params in subclass, replaces parent version. Overloading = same name, DIFFERENT params.'},
+
+  {id:'c2',cat:'concept',concept:'Terminology',title:'Which one is overloading?',
+   prompt:'A class has three methods all called run() but with different parameter lists: run(), run(int speed), run(int speed, String direction). What is this?',
+   options:['Method Overriding','Inheritance','Encapsulation','Method Overloading'],answer:3,
+   explanation:'Same name, different parameters = overloading. Java picks the right one at compile time.'},
+
+  {id:'c3',cat:'concept',concept:'Access Modifiers',title:'Private vs Public — which fits?',
+   prompt:'All instance variables in a class are declared private. Outside code must use public methods to read or change them. What OOP principle is this an example of?',
+   options:['Inheritance','Polymorphism','Encapsulation','Method Overriding'],answer:2,
+   explanation:'Encapsulation = keeping fields private, controlling access through public getters/setters. Protects data from invalid changes.'},
+
+  {id:'c4',cat:'concept',concept:'Static vs Instance',title:'Static or instance?',
+   prompt:'A bank wants one variable tracking the total number of accounts ever opened — shared across ALL account objects. Should it be static or instance?',
+   options:['Instance — each account needs its own count','Static — one shared value for all Account objects','Static — because it\'s a large number','Instance — because it changes over time'],answer:1,
+   explanation:'Static = one copy shared by the class itself. The total belongs to the system, not any individual account.'},
+
+  {id:'c5',cat:'concept',concept:'Constructors',title:'Constructor rule — what\'s wrong?',
+   prompt:'Which of these is NOT a valid rule for Java constructors?',
+   options:['Constructor name must match class name','Constructors can be overloaded','Constructors must have a return type like void','A constructor runs when you use new'],answer:2,
+   explanation:'Constructors NEVER have a return type — not even void. That\'s literally what makes them constructors.'},
+
+  {id:'c6',cat:'concept',concept:'Inheritance',title:'Where does super() go?',
+   prompt:'When a subclass constructor calls super(), where must that call appear?',
+   options:['Anywhere in the constructor body','At the very end','As the very first line','Only if the parent has a constructor with parameters'],answer:2,
+   explanation:'super() must be FIRST. Java requires the parent to initialize before the child adds anything on top.'},
+
+  {id:'c7',cat:'concept',concept:'UML',title:'UML symbols — what do they mean?',
+   prompt:'In a UML class diagram:\n- flightNumber : String\n+ getFlightNumber() : String\n\nWhat do the - and + symbols mean?',
+   options:['- = static, + = instance','- = private, + = public','- = void, + = has return value','- = inherited, + = defined here'],answer:1,
+   explanation:'UML: - = private, + = public. Always. Type comes AFTER the colon, opposite to Java.'},
+
+  {id:'c8',cat:'concept',concept:'Encapsulation',title:'Why use a setter?',
+   type:'definition',
+   prompt:'Why make a variable private and use a setter, instead of just making the variable public? What can a setter do that direct public access cannot?',
+   hint:'What if someone does myPlane.seats = -999? How does a setter stop that?'},
+
+  {id:'c9',cat:'concept',concept:'Polymorphism',title:'Explain polymorphism',
+   type:'definition',
+   prompt:'What is polymorphism in Java OOP? Name and briefly explain BOTH types you have studied.',
+   hint:'Type 1: overriding — subclass replaces parent method. Type 2: overloading — same name, different parameters.'},
+
+  {id:'c10',cat:'concept',concept:'Inheritance',title:'Explain inheritance',
+   type:'definition',
+   prompt:'What is inheritance in Java? What keyword is used, what does super() do, and give one reason why it is useful.',
+   hint:'Keyword: extends. super() = calls parent constructor. Useful: don\'t rewrite shared code.'},
+
+  // CODING
+  {id:'k1',cat:'code',concept:'Variables + Constants',title:'Declare class fields',
+   prompt:'Inside a class called BankAccount, declare:\n1. A public constant MAX_BALANCE set to 100000 (int)\n2. A private static variable totalAccounts initialized to 0\n3. A private instance variable balance (double)',
+   hint:'public static final int NAME = value;\nprivate static int name = 0;\nprivate double name;',
+   solution:`public static final int MAX_BALANCE = 100000;
+private static int totalAccounts = 0;
+private double balance;`},
+
+  {id:'k2',cat:'code',concept:'Constructor',title:'Write the constructor',
+   prompt:'Write a constructor for BankAccount. Takes a double called startingBalance. If it\'s between 0 and MAX_BALANCE inclusive, set balance to it. Otherwise set balance to 0. Increment totalAccounts.',
+   hint:'public BankAccount(double startingBalance) {\n  if (startingBalance >= 0 && startingBalance <= MAX_BALANCE) {\n    balance = startingBalance;\n  } else { balance = 0; }\n  totalAccounts++;\n}',
+   solution:`public BankAccount(double startingBalance) {
+    if (startingBalance >= 0 && startingBalance <= MAX_BALANCE) {
+        balance = startingBalance;
+    } else {
+        balance = 0;
+    }
+    totalAccounts++;
+}`},
+
+  {id:'k3',cat:'code',concept:'Getter + Setter',title:'Write getter and setter',
+   prompt:'Write:\n1. A getter for balance (returns double)\n2. A setter for balance — only updates if new value is between 0 and MAX_BALANCE. Returns boolean.',
+   hint:'public double getBalance() { return balance; }\npublic boolean setBalance(double b) {\n  if (b >= 0 && b <= MAX_BALANCE) { balance = b; return true; }\n  return false;\n}',
+   solution:`public double getBalance() {
+    return balance;
+}
+
+public boolean setBalance(double b) {
+    if (b >= 0 && b <= MAX_BALANCE) {
+        balance = b;
+        return true;
+    }
+    return false;
+}`},
+
+  {id:'k4',cat:'code',concept:'Inheritance + super',title:'Write a subclass',
+   prompt:'Write a class SavingsAccount extending BankAccount. Add private double interestRate. Constructor takes double startingBalance and double rate — call super and set interestRate.',
+   hint:'public class SavingsAccount extends BankAccount {\n  private double interestRate;\n  public SavingsAccount(double bal, double rate) {\n    super(bal);\n    interestRate = rate;\n  }\n}',
+   solution:`public class SavingsAccount extends BankAccount {
+    private double interestRate;
+
+    public SavingsAccount(double bal, double rate) {
+        super(bal);
+        interestRate = rate;
+    }
+}`},
+
+  {id:'k5',cat:'code',concept:'Method Overriding',title:'Override a method',
+   prompt:'BankAccount has: public String getType() { return "Basic"; }\n\nInside SavingsAccount, override it to return "Savings" instead.',
+   hint:'Same signature as parent. Write it again in the subclass with a different body.',
+   solution:`public String getType() {
+    return "Savings";
+}`},
+
+  {id:'k6',cat:'code',concept:'Method Overloading',title:'Write overloaded methods',
+   prompt:'Inside BankAccount, write TWO versions of deposit():\n1. deposit(double amount) — adds to balance, prints "deposited"\n2. deposit(double amount, String note) — adds to balance, prints "deposited: " + note',
+   hint:'Two methods, same name, different parameters.',
+   solution:`public void deposit(double amount) {
+    balance += amount;
+    System.out.println("deposited");
+}
+
+public void deposit(double amount, String note) {
+    balance += amount;
+    System.out.println("deposited: " + note);
+}`},
+
+  {id:'k7',cat:'code',concept:'UML → Code',title:'Translate UML to Java',
+   prompt:'Translate this UML to Java (class header + fields + method signatures only, no method bodies):\n\n[Flight]\n- flightNumber : String\n- passengers : int\n+ Flight(flightNumber : String, passengers : int)\n+ getFlightNumber() : String\n+ setPassengers(n : int) : boolean',
+   hint:'- = private, + = public. Types come after colon in UML.\npublic class Flight { private String flightNumber; ...',
+   solution:`public class Flight {
+    private String flightNumber;
+    private int passengers;
+
+    public Flight(String flightNumber, int passengers) { }
+
+    public String getFlightNumber() { }
+
+    public boolean setPassengers(int n) { }
+}`},
+
+  {id:'k8',cat:'code',concept:'deliver() / cancel() pattern',title:'Write a decrement method',
+   prompt:'In class Library, there is a private static int booksBorrowed.\nWrite returnBook() — decrements booksBorrowed but never below zero.',
+   hint:'public void returnBook() {\n  if (booksBorrowed > 0) { booksBorrowed--; }\n}',
+   solution:`public void returnBook() {
+    if (booksBorrowed > 0) {
+        booksBorrowed--;
+    }
+}`},
+];
+
+// ═══════════════════════════════════════════════════
+// PROGRESS (localStorage)
+// ═══════════════════════════════════════════════════
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem('oop_progress_v1')) || defaultProgress(); }
+  catch(e) { return defaultProgress(); }
+}
+function defaultProgress() {
+  return { correct:0, wrong:0, seen:0, streak:0, wrongQueue:[], seenIds:[] };
+}
+function saveProgress(p) {
+  localStorage.setItem('oop_progress_v1', JSON.stringify(p));
+}
+function resetProgress() {
+  if(!confirm('Reset all progress?')) return;
+  localStorage.removeItem('oop_progress_v1');
+  progress = defaultProgress();
+  updateMenuStats();
+  showToast('Progress reset');
+}
+
+let progress = loadProgress();
+
+function markCorrect(id) {
+  progress.correct++;
+  progress.streak++;
+  progress.wrongQueue = progress.wrongQueue.filter(x => x !== id);
+  if(!progress.seenIds.includes(id)) { progress.seenIds.push(id); progress.seen++; }
+  saveProgress(progress);
+}
+function markWrong(id) {
+  progress.wrong++;
+  progress.streak = 0;
+  if(!progress.seenIds.includes(id)) { progress.seenIds.push(id); progress.seen++; }
+  if(!progress.wrongQueue.includes(id)) progress.wrongQueue.push(id);
+  saveProgress(progress);
+}
+
+function updateMenuStats() {
+  document.getElementById('st_correct').textContent = progress.correct;
+  document.getElementById('st_wrong').textContent = progress.wrong;
+  document.getElementById('st_seen').textContent = progress.seen;
+  document.getElementById('st_streak').textContent = progress.streak;
+
+  const qb = document.getElementById('queueBadge');
+  const qc = document.getElementById('queueCount');
+  if(progress.wrongQueue.length > 0) {
+    qb.style.display = 'flex';
+    qc.textContent = progress.wrongQueue.length;
+  } else {
+    qb.style.display = 'none';
+  }
+  updateSyncCode();
+}
+
+// ═══════════════════════════════════════════════════
+// SYNC CODE
+// ═══════════════════════════════════════════════════
+function updateSyncCode() {
+  try {
+    const code = btoa(JSON.stringify(progress));
+    document.getElementById('syncCodeDisplay').textContent = code.substring(0,40)+'...';
+    document.getElementById('syncCodeDisplay').dataset.full = code;
+  } catch(e) {}
+}
+function copySyncCode() {
+  const full = document.getElementById('syncCodeDisplay').dataset.full;
+  if(!full) return;
+  navigator.clipboard.writeText(full).then(() => showToast('✓ Sync code copied!'));
+}
+function importSync() {
+  const raw = document.getElementById('syncImportBox').value.trim();
+  if(!raw) return;
+  try {
+    const p = JSON.parse(atob(raw));
+    if(typeof p.correct === 'number') {
+      progress = p;
+      saveProgress(progress);
+      updateMenuStats();
+      document.getElementById('syncImportBox').value = '';
+      showToast('✓ Progress imported!');
+    } else { showToast('Invalid sync code'); }
+  } catch(e) { showToast('Could not read sync code'); }
+}
+
+// ═══════════════════════════════════════════════════
+// QUIZ STATE
+// ═══════════════════════════════════════════════════
+let pool=[], retryPool=[], current=0, sessionScore=0, hintUsed=false, answered=false, mode=null, timerInterval=null, timeLeft=0;
+
+const MODES = {
+  output: {label:'Output Tracing', cats:['output']},
+  concept:{label:'Concepts & Definitions', cats:['concept']},
+  code:   {label:'Write the Code', cats:['code']},
+  mix:    {label:'Full Mix', cats:['output','concept','code']},
+  exam:   {label:'IB Paper 2 — Timed', cats:['output','concept','code'], timed:true, limit:10},
+  drill:  {label:'Wrong Answer Drill', cats:['output','concept','code']},
+};
+
+function shuffle(a) {
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+  return b;
+}
+
+function goMenu() {
+  clearInterval(timerInterval);
+  document.getElementById('menuScreen').style.display='block';
+  document.getElementById('quizScreen').style.display='none';
+  document.getElementById('completeScreen').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  updateMenuStats();
+}
+
+function startDrill() {
+  const ids = progress.wrongQueue;
+  if(!ids.length) return;
+  mode = 'drill';
+  pool = shuffle(BANK.filter(q => ids.includes(q.id)));
+  retryPool = [];
+  current = 0; sessionScore = 0;
+  document.getElementById('menuScreen').style.display='none';
+  document.getElementById('quizScreen').style.display='block';
+  document.getElementById('completeScreen').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  document.getElementById('quizTitle').textContent = '🔥 Wrong Answer Drill';
+  document.getElementById('statTotal').textContent = pool.length;
+  document.getElementById('timerDisplay').style.display='none';
+  render();
+}
+
+function startMode(m) {
+  mode = m;
+  const cfg = MODES[m];
+  let qs = BANK.filter(q => cfg.cats.includes(q.cat));
+  pool = shuffle(qs);
+  if(cfg.limit) pool = pool.slice(0, cfg.limit);
+  retryPool = [];
+  current = 0; sessionScore = 0;
+
+  document.getElementById('menuScreen').style.display='none';
+  document.getElementById('quizScreen').style.display='block';
+  document.getElementById('completeScreen').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  document.getElementById('quizTitle').textContent = cfg.label;
+  document.getElementById('statTotal').textContent = pool.length;
+
+  const td = document.getElementById('timerDisplay');
+  if(cfg.timed) {
+    timeLeft = 20*60; td.style.display='block'; updateTimerDisplay();
+    timerInterval = setInterval(()=>{ timeLeft--; updateTimerDisplay(); if(timeLeft<=0){clearInterval(timerInterval);showComplete();}},1000);
+  } else { td.style.display='none'; clearInterval(timerInterval); }
+
+  render();
+}
+
+function updateTimerDisplay() {
+  const m=Math.floor(timeLeft/60), s=timeLeft%60;
+  const el=document.getElementById('timerDisplay');
+  if(el) el.textContent=`⏱ ${m}:${String(s).padStart(2,'0')}`;
+}
+
+function rerun() {
+  document.getElementById('completeScreen').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  startMode(mode==='drill'?'drill':mode);
+}
+
+function updateStats() {
+  document.getElementById('statScore').textContent = Math.round(sessionScore*10)/10;
+  document.getElementById('statQ').textContent = Math.max(pool.length - current, 0);
+  document.getElementById('progressFill').style.width = (current/Math.max(pool.length,1)*100)+'%';
+  const wp = document.getElementById('wrongPillWrap');
+  wp.innerHTML = retryPool.length > 0 ? `<div class="wrong-pill">↩ ${retryPool.length} to retry</div>` : '';
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════
+function render() {
+  if(current >= pool.length) {
+    // inject retries back
+    if(retryPool.length > 0) {
+      pool = [...pool, ...shuffle(retryPool)];
+      retryPool = [];
+    } else {
+      showComplete(); return;
+    }
+  }
+
+  const q = pool[current];
+  hintUsed=false; answered=false;
+  updateStats();
+
+  const isWrittenConcept = q.cat==='concept' && q.type==='definition';
+  const isMC = !isWrittenConcept && q.cat !== 'code';
+  const isCode = q.cat==='code';
+  const isRetry = q._retry === true;
+
+  const badges = {
+    output:['type-output','OUTPUT — What Prints?'],
+    concept: isWrittenConcept?['type-def','WRITE — Short Answer']:['type-mc','MULTIPLE CHOICE'],
+    code:['type-code','WRITE THE CODE'],
+  };
+  const [bc,bt] = badges[q.cat]||['type-mc','MC'];
+
+  let html = `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+    <div class="type-badge ${bc}">${bt}</div>
+    ${isRetry?'<div class="retry-badge">↩ RETRY</div>':''}
+  </div>`;
+  html += `<div class="q-title">${q.title}</div>`;
+  html += `<div class="q-concept">${q.concept}</div>`;
+  if(q.code) html += `<div class="code-block">${q.code}</div>`;
+  if(q.prompt) html += `<div class="q-prompt">${q.prompt}</div>`;
+
+  if(isMC && q.options) {
+    html += '<div class="mc-options" id="mcOptions">';
+    q.options.forEach((opt,i)=>{
+      html+=`<button class="mc-option" onclick="pickMC(${i})" id="opt${i}"><span class="opt-letter">${String.fromCharCode(65+i)}</span>${opt}</button>`;
+    });
+    html += '</div><div class="mc-explain" id="mcExplain"></div>';
+  }
+
+  if(isWrittenConcept||isCode) {
+    html+=`<div class="input-label">${isCode?'Your Code':'Your Answer'}</div>`;
+    html+=`<textarea class="code-input" id="codeInput" placeholder="${isCode?'// write your Java here...':''}" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off"></textarea>`;
+  }
+
+  html+=`<div class="hint-box" id="hintBox"></div>`;
+  if(isCode) html+=`<div class="solution-box" id="solutionBox"><div class="solution-label">✓ Example Solution</div><pre id="solutionPre"></pre></div>`;
+
+  html+='<div class="btn-row">';
+  if(isWrittenConcept||isCode) html+=`<button class="btn-primary" id="btnCheck" onclick="checkWritten()">Check Answer</button>`;
+  if(q.hint) html+=`<button class="btn-hint" onclick="showHint()">💡 Hint</button>`;
+  if(isCode) html+=`<button class="btn-solution" onclick="showSolution()">Show Solution</button>`;
+  html+=`<button class="btn-secondary" onclick="skipQ()">Skip →</button>`;
+  html+='</div>';
+  html+='<div class="btn-row" style="margin-top:8px"><button class="btn-next" id="btnNext" onclick="next()">Next →</button></div>';
+  html+=`<div class="feedback" id="feedbackBox"><div class="feedback-title" id="fbTitle"></div><div class="feedback-body" id="fbBody"></div></div>`;
+
+  const card=document.createElement('div');
+  card.className='card'; card.innerHTML=html;
+  const area=document.getElementById('mainArea');
+  area.innerHTML=''; area.appendChild(card);
+}
+
+// ═══════════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════════
+function pickMC(idx) {
+  if(answered) return;
+  answered=true;
+  const q=pool[current];
+  document.querySelectorAll('.mc-option').forEach((btn,i)=>{
+    btn.classList.add('locked');
+    if(i===q.answer) btn.classList.add('correct');
+    else if(i===idx&&idx!==q.answer) btn.classList.add('wrong');
+  });
+  const ex=document.getElementById('mcExplain');
+  if(ex){ex.style.display='block';ex.textContent='✓ '+q.explanation;}
+
+  if(idx===q.answer) {
+    if(!hintUsed) sessionScore++; else sessionScore+=0.5;
+    markCorrect(q.id);
+  } else {
+    markWrong(q.id);
+    // queue for retry later this session
+    const clone={...q,_retry:true};
+    retryPool.push(clone);
+  }
+  updateStats();
+  const nb=document.getElementById('btnNext');
+  if(nb) nb.style.display='block';
+}
+
+function showHint() {
+  const q=pool[current];
+  if(!q.hint) return;
+  hintUsed=true;
+  const hb=document.getElementById('hintBox');
+  if(hb){hb.textContent='💡 '+q.hint;hb.style.display='block';}
+}
+
+function showSolution() {
+  const q=pool[current];
+  if(!q.solution) return;
+  hintUsed=true;
+  const sb=document.getElementById('solutionBox');
+  const sp=document.getElementById('solutionPre');
+  if(sb&&sp){sp.textContent=q.solution;sb.style.display='block';}
+}
+
+async function checkWritten() {
+  const ta=document.getElementById('codeInput');
+  if(!ta) return;
+  const code=ta.value.trim();
+  if(!code) return;
+  const q=pool[current];
+  const btn=document.getElementById('btnCheck');
+  if(btn) btn.disabled=true;
+  answered=true;
+
+  const fb=document.getElementById('feedbackBox');
+  const ft=document.getElementById('fbTitle');
+  const fbb=document.getElementById('fbBody');
+  fb.className='feedback loading'; ft.innerHTML='<span class="spinner"></span>Checking...'; fbb.textContent=''; fb.style.display='block';
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`You are a concise Java OOP tutor for an IB Computer Science HL student.
+Evaluate their answer. First line must be exactly "CORRECT" or "NEEDS WORK".
+Then 2-3 sentences: what's right, what's wrong if anything, and a quick fix.
+For definition questions: mark CORRECT if they capture the core idea even if wording differs.
+For code: ignore minor typos/missing semicolons — focus on structure and logic.
+Max 80 words.`,
+        messages:[{role:'user',content:`Task: ${q.prompt}\nStudent answer:\n${code}`}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'No response.';
+    const ok=text.startsWith('CORRECT');
+    if(ok){ if(!hintUsed) sessionScore++; else sessionScore+=0.5; markCorrect(q.id); }
+    else { markWrong(q.id); const clone={...q,_retry:true}; retryPool.push(clone); }
+    updateStats();
+    fb.className='feedback '+(ok?'good':'bad');
+    ft.textContent=ok?'✓ Correct':'✗ Needs Work';
+    fbb.textContent=text.replace(/^(CORRECT|NEEDS WORK)\n?/,'').trim();
+    const nb=document.getElementById('btnNext'); if(nb) nb.style.display='block';
+  } catch(e) {
+    fb.className='feedback bad'; ft.textContent='Error';
+    fbb.textContent='Could not connect. Try again.';
+    if(btn) btn.disabled=false; answered=false;
+  }
+}
+
+function skipQ() {
+  const q=pool[current];
+  markWrong(q.id);
+  const clone={...q,_retry:true}; retryPool.push(clone);
+  next();
+}
+
+function next() {
+  current++;
+  if(current>=pool.length && retryPool.length>0) {
+    pool=[...pool,...shuffle(retryPool)];
+    retryPool=[];
+    document.getElementById('statTotal').textContent=pool.length;
+  }
+  if(current>=pool.length) showComplete();
+  else { render(); window.scrollTo(0,0); }
+}
+
+function showComplete() {
+  clearInterval(timerInterval);
+  document.getElementById('mainArea').style.display='none';
+  document.getElementById('completeScreen').style.display='block';
+  const pct=Math.round(sessionScore/Math.max(pool.length,1)*100);
+  document.getElementById('finalPct').textContent=pct+'%';
+  document.getElementById('finalScore').textContent=`${Math.round(sessionScore*10)/10} / ${pool.length}`;
+  document.getElementById('finalMsg').textContent=
+    pct>=85?'solid. go do the paper test now.' :
+    pct>=65?'getting there. run it again.' :
+    'keep going. every run locks in more.';
+  document.getElementById('progressFill').style.width='100%';
+  updateMenuStats();
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+document.getElementById('menuScreen').style.display='block';
+updateMenuStats();
+</script>
+</body>
+</html>
