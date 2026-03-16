@@ -315,20 +315,22 @@ window.saveConfig = function() {
   const errEl = document.getElementById('setupError');
   errEl.style.display = 'none';
   try {
-    // extract the object from the pasted text
-    let json = raw;
-    // handle if they pasted "const firebaseConfig = {...}" format
+    // extract just the {...} block
     const match = raw.match(/\{[\s\S]*\}/);
-    if(match) json = match[0];
-    // convert JS object notation to JSON
-    json = json.replace(/(\w+):/g, '"$1":').replace(/'/g, '"');
+    if(!match) throw new Error('No config object found');
+    let json = match[0];
+    // replace JS keys (no quotes) with JSON keys (with quotes)
+    // handles both "key": and key: formats
+    json = json
+      .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^']*)'/g, ': "$1"');
     const config = JSON.parse(json);
-    if(!config.apiKey || !config.projectId) throw new Error('Missing required fields');
+    if(!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
     localStorage.setItem('oop_fb_config', JSON.stringify(config));
     initFirebase(config);
   } catch(e) {
     errEl.style.display = 'block';
-    errEl.textContent = 'Could not parse config. Make sure you copied the full firebaseConfig object. Error: ' + e.message;
+    errEl.textContent = 'Error: ' + e.message + ' — try pasting just the { } block with all the keys and values.';
   }
 }
 
