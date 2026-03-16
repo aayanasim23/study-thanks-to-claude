@@ -294,17 +294,13 @@
 
 </div>
 
-<!-- Firebase SDKs -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-// ═══════════════════════════════
-// CONFIG MANAGEMENT
-// ═══════════════════════════════
-let firebaseApp = null, auth = null, db = null, currentUser = null;
-let firebaseEnabled = false;
+<!-- CORE SCRIPT — always runs regardless of Firebase -->
+<script>
+// Stubs — overridden by Firebase module if it loads
+window._fbUser = null;
+window.saveToFirestore = async function() {};
+window.signInGoogle = function() { window.showToast && window.showToast('Sign in unavailable'); };
+window.signOutUser = function() { window.showToast && window.showToast('Sign in unavailable'); };
 
 function getSavedConfig() {
   try { return JSON.parse(localStorage.getItem('oop_fb_config')); } catch(e) { return null; }
@@ -315,22 +311,21 @@ window.saveConfig = function() {
   const errEl = document.getElementById('setupError');
   errEl.style.display = 'none';
   try {
-    // extract just the {...} block
     const match = raw.match(/\{[\s\S]*\}/);
     if(!match) throw new Error('No config object found');
     let json = match[0];
-    // replace JS keys (no quotes) with JSON keys (with quotes)
-    // handles both "key": and key: formats
     json = json
       .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
       .replace(/:\s*'([^']*)'/g, ': "$1"');
     const config = JSON.parse(json);
     if(!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
     localStorage.setItem('oop_fb_config', JSON.stringify(config));
-    initFirebase(config);
+    localStorage.removeItem('oop_fb_skipped');
+    window.showToast('Config saved — reloading...');
+    setTimeout(() => location.reload(), 800);
   } catch(e) {
     errEl.style.display = 'block';
-    errEl.textContent = 'Error: ' + e.message + ' — try pasting just the { } block with all the keys and values.';
+    errEl.textContent = 'Error: ' + e.message;
   }
 }
 
@@ -338,137 +333,118 @@ window.skipSetup = function() {
   localStorage.setItem('oop_fb_skipped', '1');
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
-  initApp();
+  const wrap = document.getElementById('userBarWrap');
+  if(wrap) wrap.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:13px;font-weight:700">Local mode</div><div style="font-size:11px;color:var(--muted)">Progress saved to this browser only</div></div>
+    <button onclick="document.getElementById('setupScreen').style.display='block';document.getElementById('appScreen').style.display='none';" style="background:transparent;border:1.5px solid var(--accent3);color:var(--accent3);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">Set up sync →</button>
+  </div>`;
+  window.initApp();
 }
 
-function initFirebase(config) {
+window.addEventListener('DOMContentLoaded', function() {
+  const savedConfig = getSavedConfig();
+  const skipped = localStorage.getItem('oop_fb_skipped');
+  if(!savedConfig && !skipped) {
+    document.getElementById('setupScreen').style.display = 'block';
+  } else if(skipped && !savedConfig) {
+    window.skipSetup();
+  }
+  // If savedConfig exists, Firebase module handles init
+});
+</script>
+
+<!-- Firebase module — loads async, app works even if this fails -->
+<script type="module">
+(async () => {
   try {
-    firebaseApp = initializeApp(config);
-    auth = getAuth(firebaseApp);
-    db = getFirestore(firebaseApp);
-    firebaseEnabled = true;
-    document.getElementById('setupScreen').style.display = 'none';
-    document.getElementById('appScreen').style.display = 'block';
+    const savedConfig = (() => { try { return JSON.parse(localStorage.getItem('oop_fb_config')); } catch(e) { return null; } })();
+    if(!savedConfig) return; // no config, skip Firebase entirely
+
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const { getFirestore, doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+    const app = initializeApp(savedConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.signInGoogle = async function() {
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      } catch(e) { window.showToast('Sign in failed: ' + e.message); }
+    };
+
+    window.signOutUser = async function() {
+      await signOut(auth);
+      window.showToast('Signed out');
+      location.reload();
+    };
+
+    window.saveToFirestore = async function() {
+      if(!window._fbUser) return;
+      const el = document.getElementById('syncStatusTxt');
+      if(el) el.textContent = '⏳ syncing...';
+      try {
+        await setDoc(doc(db, 'progress', window._fbUser.uid), window.progress);
+        if(el) el.textContent = '✓ synced';
+      } catch(e) {
+        if(el) el.textContent = '⚠ offline';
+      }
+    };
 
     onAuthStateChanged(auth, async user => {
-      currentUser = user;
+      window._fbUser = user;
+      const wrap = document.getElementById('userBarWrap');
+      if(!wrap) return;
+
       if(user) {
-        await loadFromFirestore(user.uid);
-        renderUserBar(user);
+        // Load progress from Firestore
+        try {
+          const snap = await getDoc(doc(db, 'progress', user.uid));
+          if(snap.exists()) {
+            window.progress = snap.data();
+            window.saveLocal && window.saveLocal();
+          }
+        } catch(e) {}
+
+        wrap.innerHTML = `
+          <div class="user-bar">
+            <div class="user-info">
+              <div class="user-avatar">${user.photoURL ? `<img src="${user.photoURL}">` : (user.displayName||'?')[0]}</div>
+              <div>
+                <div class="user-name">${user.displayName||user.email}</div>
+                <div class="user-sub" id="syncStatusTxt">✓ synced</div>
+              </div>
+            </div>
+            <button class="btn-signout" onclick="signOutUser()">Sign out</button>
+          </div>`;
       } else {
-        renderSignInCard();
+        wrap.innerHTML = `
+          <div class="signin-card">
+            <h3>Sign in to sync progress</h3>
+            <p>Your wrong answers, score, and streak follow you across every device automatically.</p>
+            <button class="btn-google" onclick="signInGoogle()">
+              <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Continue with Google
+            </button>
+            <br>
+            <button class="btn-anon" onclick="document.getElementById('userBarWrap').innerHTML=''">Continue without signing in</button>
+          </div>`;
       }
-      initApp();
+
+      document.getElementById('setupScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      window.initApp && window.initApp();
     });
+
   } catch(e) {
-    const errEl = document.getElementById('setupError');
-    errEl.style.display = 'block';
-    errEl.textContent = 'Firebase init failed: ' + e.message;
+    console.log('Firebase unavailable:', e.message);
+    // App already handles this via core script
   }
-}
+})();
+</script>
 
-// ═══════════════════════════════
-// AUTH
-// ═══════════════════════════════
-window.signInGoogle = async function() {
-  if(!auth) return;
-  try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  } catch(e) { showToast('Sign in failed: ' + e.message); }
-}
-
-window.signOutUser = async function() {
-  if(!auth) return;
-  await signOut(auth);
-  renderSignInCard();
-  showToast('Signed out');
-}
-
-function renderUserBar(user) {
-  const wrap = document.getElementById('userBarWrap');
-  if(!wrap) return;
-  const syncEl = document.getElementById('syncStatusTxt');
-  wrap.innerHTML = `
-    <div class="user-bar">
-      <div class="user-info">
-        <div class="user-avatar">${user.photoURL ? `<img src="${user.photoURL}">` : user.displayName?.[0]||'?'}</div>
-        <div>
-          <div class="user-name">${user.displayName||user.email}</div>
-          <div class="user-sub" id="syncStatusTxt">✓ synced</div>
-        </div>
-      </div>
-      <button class="btn-signout" onclick="signOutUser()">Sign out</button>
-    </div>`;
-}
-
-function renderSignInCard() {
-  const wrap = document.getElementById('userBarWrap');
-  if(!wrap) return;
-  if(!firebaseEnabled) {
-    wrap.innerHTML = `<div class="signin-card" style="padding:14px;text-align:left;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div><div style="font-size:13px;font-weight:700;margin-bottom:2px">Local mode</div><div style="font-size:11px;color:var(--muted)">Progress saved to this browser only</div></div>
-      <button class="btn-sm" onclick="document.getElementById('setupScreen').style.display='block';document.getElementById('appScreen').style.display='none';" style="background:transparent;border:1.5px solid var(--accent3);color:var(--accent3);border-radius:8px;padding:7px 12px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer">Set up sync →</button>
-    </div>`;
-    return;
-  }
-  wrap.innerHTML = `
-    <div class="signin-card">
-      <h3>Sign in to sync progress</h3>
-      <p>Your wrong answers, score, and streak follow you across every device automatically.</p>
-      <button class="btn-google" onclick="signInGoogle()">
-        <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Continue with Google
-      </button>
-      <br>
-      <button class="btn-anon" onclick="document.getElementById('userBarWrap').innerHTML=''">Continue without signing in</button>
-    </div>`;
-}
-
-// ═══════════════════════════════
-// FIRESTORE SYNC
-// ═══════════════════════════════
-async function loadFromFirestore(uid) {
-  try {
-    const ref = doc(db, 'progress', uid);
-    const snap = await getDoc(ref);
-    if(snap.exists()) {
-      progress = snap.data();
-      saveLocal();
-    }
-  } catch(e) { console.log('Firestore load failed, using local', e); }
-}
-
-async function saveToFirestore() {
-  if(!firebaseEnabled || !currentUser) return;
-  const syncEl = document.getElementById('syncStatusTxt');
-  if(syncEl) { syncEl.textContent = '⏳ syncing...'; }
-  try {
-    await setDoc(doc(db, 'progress', currentUser.uid), progress);
-    if(syncEl) syncEl.textContent = '✓ synced';
-  } catch(e) {
-    if(syncEl) syncEl.textContent = '⚠ offline';
-  }
-}
-
-// ═══════════════════════════════
-// INIT CHECK
-// ═══════════════════════════════
-const savedConfig = getSavedConfig();
-const skipped = localStorage.getItem('oop_fb_skipped');
-
-if(savedConfig) {
-  initFirebase(savedConfig);
-} else if(skipped) {
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
-  renderSignInCard();
-  initApp();
-} else {
-  // show setup
-  document.getElementById('setupScreen').style.display = 'block';
-}
-
+<script>
 // ═══════════════════════════════════════════════════
 // QUESTION BANK
 // ═══════════════════════════════════════════════════
@@ -652,13 +628,14 @@ System.out.println(<span class="cl">Plane</span>.getTotal());`,
 // ═══════════════════════════════════════════════════
 // PROGRESS
 // ═══════════════════════════════════════════════════
-let progress = loadLocal();
+window.progress = loadLocal();
+let progress = window.progress;
 function loadLocal() {
   try { return JSON.parse(localStorage.getItem('oop_progress_v2'))||defaultP(); } catch(e){ return defaultP(); }
 }
 function defaultP(){ return {correct:0,wrong:0,seen:0,streak:0,wrongQueue:[],seenIds:[]}; }
-function saveLocal(){ localStorage.setItem('oop_progress_v2',JSON.stringify(progress)); }
-function saveProgress(){ saveLocal(); saveToFirestore(); }
+window.saveLocal = function(){ localStorage.setItem('oop_progress_v2',JSON.stringify(progress)); }
+function saveProgress(){ saveLocal(); window.saveToFirestore(); }
 
 function markCorrect(id){
   progress.correct++; progress.streak++;
@@ -928,7 +905,10 @@ window.initApp=function(){
   document.getElementById('appScreen').style.display='block';
   showScreens('menu');
   updateMenuStats();
-  if(!firebaseEnabled) renderSignInCard();
+  if(!window._fbUser) {
+    const wrap = document.getElementById('userBarWrap');
+    if(wrap && !wrap.innerHTML.trim()) renderNoFirebase && renderNoFirebase();
+  }
 }
 
 </script>
