@@ -194,7 +194,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- ══ SETUP SCREEN ══ -->
-<div id="setupScreen">
+<div id="setupScreen" style="display:none">
   <div class="setup-screen">
     <h1>One-time <span>Firebase</span> Setup</h1>
     <p>Takes 5 minutes. After this your progress syncs automatically across every device — no keys, no copying, just sign in with Google.</p>
@@ -228,7 +228,7 @@
 </div>
 
 <!-- ══ MAIN APP ══ -->
-<div class="screen" id="appScreen">
+<div class="screen" id="appScreen" style="display:none">
 
   <!-- MENU -->
   <div class="screen" id="menuScreen">
@@ -263,6 +263,33 @@
     <div class="menu-card-full" onclick="startMode('exam')">
       <div class="menu-icon">🎯</div>
       <div><h2>IB Paper 2 Style — Timed 20 min</h2><p>10 questions, countdown timer.</p></div>
+    </div>
+
+    <!-- API KEY SETTINGS -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:2px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🔑 AI Grading Settings</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">Choose your AI provider and paste your API key. Key saves to your account if signed in with Google.</p>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Provider</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="providerBtns">
+          <button onclick="selectProvider('openrouter')" id="pb_openrouter" style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--accent);background:rgba(94,231,160,0.1);color:var(--accent)">OpenRouter</button>
+          <button onclick="selectProvider('gemini')" id="pb_gemini" style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted)">Gemini ⭐</button>
+          <button onclick="selectProvider('groq')" id="pb_groq" style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted)">Groq</button>
+          <button onclick="selectProvider('anthropic')" id="pb_anthropic" style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted)">Anthropic</button>
+          <button onclick="selectProvider('openai')" id="pb_openai" style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted)">OpenAI</button>
+        </div>
+        <div id="providerHint" style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">Free key at openrouter.ai — no credit card. Sign up → Keys → Create key.</div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false"
+          style="flex:1;min-width:200px;background:#070810;border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;outline:none"
+          onfocus="this.style.borderColor='var(--accent3)'" onblur="this.style.borderColor='var(--border)'" />
+        <button onclick="saveApiKey()" style="background:var(--accent);color:#041008;border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Save</button>
+        <button onclick="clearApiKey()" style="background:transparent;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer">Clear</button>
+      </div>
+      <div id="apiKeyStatus" style="font-size:11px;margin-top:8px;color:var(--muted)"></div>
     </div>
   </div>
 
@@ -404,6 +431,11 @@ window.addEventListener('DOMContentLoaded', function() {
           if(snap.exists()) {
             window.progress = snap.data();
             window.saveLocal && window.saveLocal();
+            // restore API key if synced
+            if(window.progress._apiKey) {
+              localStorage.setItem('oop_api_key', window.progress._apiKey);
+            }
+            window.loadApiKeyFromProgress && window.loadApiKeyFromProgress();
           }
         } catch(e) {}
 
@@ -848,12 +880,24 @@ window.checkWritten=async function(){
   const fb=document.getElementById('feedbackBox'),ft=document.getElementById('fbTitle'),fbb=document.getElementById('fbBody');
   fb.className='feedback loading';ft.innerHTML='<span class="spinner"></span>Checking...';fbb.textContent='';fb.style.display='block';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
-        system:`You are a concise Java OOP tutor for IB CS HL. First line must be exactly "CORRECT" or "NEEDS WORK". Then 2-3 sentences on what's right/wrong and a quick fix. For definitions: CORRECT if they capture the core idea. For code: ignore minor typos, focus on logic and structure. Max 80 words.`,
-        messages:[{role:'user',content:`Task: ${q.prompt}\nAnswer:\n${code}`}]})});
+    const apiKey = localStorage.getItem('oop_api_key');
+    if(!apiKey) {
+      fb.className='feedback bad'; ft.textContent='No API Key';
+      fbb.textContent='Add an API key in Settings below. Free options: Gemini (aistudio.google.com), Groq (console.groq.com), or OpenRouter (openrouter.ai) — all free, no card needed. Or use Show Solution.';
+      fb.style.display='block';
+      const nb=document.getElementById('btnNext'); if(nb) nb.style.display='block';
+      answered=false; if(btn) btn.disabled=false;
+      return;
+    }
+    const providerKey = localStorage.getItem('oop_provider') || 'openrouter';
+    const providerCfg = (typeof PROVIDERS !== 'undefined' && PROVIDERS[providerKey]) || PROVIDERS['openrouter'];
+    const sysPrompt = 'You are a concise Java OOP tutor for IB CS HL. First line must be exactly CORRECT or NEEDS WORK. Then 2-3 sentences on what is right/wrong and a quick fix. For definitions: CORRECT if they capture the core idea. For code: ignore minor typos, focus on logic and structure. Max 80 words.';
+    const sysMsgs = [{role:'system',content:sysPrompt},{role:'user',content:`Task: ${q.prompt}\nAnswer:\n${code}`}];
+    const apiUrl = providerCfg.urlFn ? providerCfg.urlFn(apiKey) : providerCfg.url;
+    const bodyData = providerCfg.body.length === 2 ? providerCfg.body(sysMsgs, apiKey) : providerCfg.body(sysMsgs);
+    const res=await fetch(apiUrl,{method:'POST',headers:providerCfg.headers(apiKey),body:bodyData});
     const data=await res.json();
-    const text=data.content?.map(c=>c.text||'').join('')||'No response.';
+    const text=providerCfg.parse(data);
     const ok=text.startsWith('CORRECT');
     if(ok){if(!hintUsed)sessionScore++;else sessionScore+=0.5;markCorrect(q.id);}
     else{markWrong(q.id);retryPool.push({...q,_retry:true});}
@@ -894,6 +938,118 @@ function showComplete(){
 // ═══════════════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════════════
+const PROVIDERS = {
+  openrouter: {
+    name:'OpenRouter',
+    hint:'Free key at openrouter.ai — no credit card. Sign up → Keys → Create. 50 req/day free.',
+    placeholder:'sk-or-v1-...',
+    headers: k => ({'Content-Type':'application/json','Authorization':'Bearer '+k,'HTTP-Referer':'https://aayanasim23.github.io','X-Title':'IB CS OOP Practice'}),
+    body: msgs => JSON.stringify({model:'meta-llama/llama-3.3-70b-instruct:free',max_tokens:1000,messages:msgs}),
+    url:'https://openrouter.ai/api/v1/chat/completions',
+    parse: d => d.choices?.[0]?.message?.content||'No response.'
+  },
+  gemini: {
+    name:'Gemini (free)',
+    hint:'100% free at aistudio.google.com — sign in with Google → Get API Key. Best free option.',
+    placeholder:'AIza...',
+    headers: k => ({'Content-Type':'application/json'}),
+    body: (msgs, k) => JSON.stringify({contents:[{parts:[{text:msgs[0].content+'\n\nUser answer:\n'+msgs[1].content}]}]}),
+    urlFn: k => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+k,
+    parse: d => d.candidates?.[0]?.content?.parts?.[0]?.text||'No response.'
+  },
+  groq: {
+    name:'Groq (fast+free)',
+    hint:'Free at console.groq.com — no credit card. 1000 req/day. Fastest inference available.',
+    placeholder:'gsk_...',
+    headers: k => ({'Content-Type':'application/json','Authorization':'Bearer '+k}),
+    body: msgs => JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:1000,messages:msgs}),
+    url:'https://api.groq.com/openai/v1/chat/completions',
+    parse: d => d.choices?.[0]?.message?.content||'No response.'
+  },
+  anthropic: {
+    name:'Anthropic',
+    hint:'$5 free credits at console.anthropic.com — API Keys → Create.',
+    placeholder:'sk-ant-...',
+    headers: k => ({'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}),
+    body: msgs => JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1000,system:msgs[0].content,messages:msgs.slice(1)}),
+    url:'https://api.anthropic.com/v1/messages',
+    parse: d => d.content?.map(c=>c.text||'').join('')||'No response.'
+  },
+  openai: {
+    name:'OpenAI',
+    hint:'API key at platform.openai.com — requires credit card but $5 free credits.',
+    placeholder:'sk-...',
+    headers: k => ({'Content-Type':'application/json','Authorization':'Bearer '+k}),
+    body: msgs => JSON.stringify({model:'gpt-4o-mini',max_tokens:1000,messages:msgs}),
+    url:'https://api.openai.com/v1/chat/completions',
+    parse: d => d.choices?.[0]?.message?.content||'No response.'
+  }
+};
+
+window._provider = localStorage.getItem('oop_provider') || 'openrouter';
+
+window.selectProvider = function(p) {
+  window._provider = p;
+  localStorage.setItem('oop_provider', p);
+  const cfg = PROVIDERS[p];
+  document.getElementById('apiKeyInput').placeholder = cfg.placeholder;
+  document.getElementById('providerHint').textContent = cfg.hint;
+  // update button styles
+  Object.keys(PROVIDERS).forEach(k => {
+    const btn = document.getElementById('pb_'+k);
+    if(!btn) return;
+    if(k===p) { btn.style.borderColor='var(--accent)'; btn.style.background='rgba(94,231,160,0.1)'; btn.style.color='var(--accent)'; }
+    else { btn.style.borderColor='var(--border)'; btn.style.background='transparent'; btn.style.color='var(--muted)'; }
+  });
+}
+
+window.saveApiKey = function() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if(!key || key.length < 10) {
+    document.getElementById('apiKeyStatus').innerHTML = '<span style="color:var(--error)">Key looks too short — check you copied the full key</span>';
+    return;
+  }
+  localStorage.setItem('oop_api_key', key);
+  if(window._fbUser && window.progress) {
+    window.progress._apiKey = key;
+    window.progress._provider = window._provider;
+    window.saveToFirestore && window.saveToFirestore();
+  }
+  document.getElementById('apiKeyInput').value = '';
+  const p = PROVIDERS[window._provider];
+  document.getElementById('apiKeyStatus').innerHTML = '<span style="color:var(--accent)">✓ ' + p.name + ' key saved — AI grading enabled' + (window._fbUser?' & synced':'') + '</span>';
+}
+
+window.clearApiKey = function() {
+  localStorage.removeItem('oop_api_key');
+  if(window._fbUser && window.progress) {
+    delete window.progress._apiKey;
+    delete window.progress._provider;
+    window.saveToFirestore && window.saveToFirestore();
+  }
+  document.getElementById('apiKeyStatus').innerHTML = '<span style="color:var(--muted)">Key removed</span>';
+}
+
+window.loadApiKeyFromProgress = function() {
+  if(window.progress) {
+    if(window.progress._apiKey) localStorage.setItem('oop_api_key', window.progress._apiKey);
+    if(window.progress._provider) { window._provider = window.progress._provider; localStorage.setItem('oop_provider', window._provider); }
+  }
+  // update UI
+  const p = window._provider || 'openrouter';
+  window.selectProvider && window.selectProvider(p);
+  const el = document.getElementById('apiKeyStatus');
+  const k = localStorage.getItem('oop_api_key');
+  if(el) el.innerHTML = k
+    ? '<span style="color:var(--accent)">✓ ' + (PROVIDERS[p]?.name||p) + ' key active</span>'
+    : '<span style="color:var(--muted)">No key — free options: <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent3)">Gemini</a>, <a href="https://console.groq.com" target="_blank" style="color:var(--accent3)">Groq</a>, <a href="https://openrouter.ai" target="_blank" style="color:var(--accent3)">OpenRouter</a></span>';
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  window._provider = localStorage.getItem('oop_provider') || 'openrouter';
+  setTimeout(() => { window.selectProvider && window.selectProvider(window._provider); window.loadApiKeyFromProgress && window.loadApiKeyFromProgress(); }, 100);
+});
+
 window.showToast=function(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
 }
