@@ -801,10 +801,13 @@ async function loadFromSupabase() {
     if(data && data.data) {
       progress = {...defaultP(), ...data.data};
       saveLocal();
-      // Always restore API key from Supabase — it's the source of truth for cross-device sync
+      // Always sync API key state from Supabase — source of truth for cross-device
       if(progress._apiKey) {
         localStorage.setItem('oop_api_key', progress._apiKey);
         console.log('// API key synced from Supabase');
+      } else {
+        // Key was explicitly cleared on another device — clear locally too
+        localStorage.removeItem('oop_api_key');
       }
       if(progress._provider) {
         window._provider = progress._provider;
@@ -825,6 +828,10 @@ window.saveToSupabase = async function() {
     if(apiKey) {
       progress._apiKey = apiKey;
       progress._provider = provider || 'openrouter';
+    } else {
+      // Explicitly null so Supabase overwrites any previously stored key
+      progress._apiKey = null;
+      progress._provider = null;
     }
     await sb.from('progress').upsert({ id: currentUser.id, data: progress, updated_at: new Date().toISOString() });
     if(el) el.textContent = '// synced ✓';
@@ -1577,8 +1584,9 @@ window.saveApiKey = function() {
 
 window.clearApiKey = function() {
   localStorage.removeItem('oop_api_key');
-  delete progress._apiKey; delete progress._provider;
-  saveProgress();
+  delete progress._apiKey;
+  delete progress._provider;
+  saveProgress(); // syncs the deletion to Supabase
   document.getElementById('apiKeyStatus').innerHTML = '<span style="color:var(--muted)">// key cleared</span>';
 };
 
