@@ -718,12 +718,19 @@ async function initAuth() {
       showApp();
     }, 3000);
   } else {
-    // Normal load — check existing session
+    // Normal load — check existing session with hard timeout
     try {
-      const { data: { session } } = await sb.auth.getSession();
+      const sessionPromise = sb.auth.getSession();
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000));
+      const { data: { session } } = await Promise.race([sessionPromise, timeout]);
       if(session) {
         currentUser = session.user;
-        await loadFromSupabase();
+        // Load Supabase data async — don't block showApp
+        loadFromSupabase().catch(()=>{}).then(() => {
+          if(currentUser) renderUserBar(currentUser);
+          updateMenuStats();
+          loadApiKeyFromProgress();
+        });
         renderUserBar(session.user);
       } else {
         renderSignIn();
@@ -1199,6 +1206,221 @@ public void sendMessage(String msg, int frequency) {
     super(model);
     this.capacity = capacity;
 }`},
+
+  // ── IB 2017 PAPER — SalesPerson/Sales suite ──────────
+  {id:'ib1',cat:'output',concept:'Array of objects — trace',title:'What are the 4 output lines?',
+   code:`<span class="kw">class</span> <span class="cl">Sales</span> {
+  <span class="kw">private</span> <span class="cl">String</span> itemId;
+  <span class="kw">private double</span> value;
+  <span class="kw">private int</span> quantity;
+  <span class="kw">public</span> <span class="cl">Sales</span>(<span class="cl">String</span> id, <span class="kw">double</span> v, <span class="kw">int</span> q){itemId=id; value=v; quantity=q;}
+  <span class="kw">public double</span> getValue(){<span class="kw">return</span> value;}
+  <span class="kw">public int</span> getQuantity(){<span class="kw">return</span> quantity;}
+}
+<span class="cl">SalesPerson</span>[] sp = <span class="kw">new</span> <span class="cl">SalesPerson</span>[<span class="num">6</span>];
+sp[<span class="num">0</span>] = <span class="kw">new</span> <span class="cl">SalesPerson</span>(<span class="str">"100"</span>);
+sp[<span class="num">1</span>] = <span class="kw">new</span> <span class="cl">SalesPerson</span>(<span class="str">"101"</span>);
+sp[<span class="num">2</span>] = <span class="kw">new</span> <span class="cl">SalesPerson</span>(<span class="str">"102"</span>);
+sp[<span class="num">0</span>].setSalesHistory(<span class="kw">new</span> <span class="cl">Sales</span>(<span class="str">"A100"</span>,<span class="num">300.00</span>,<span class="num">10</span>));
+sp[<span class="num">0</span>].setSalesHistory(<span class="kw">new</span> <span class="cl">Sales</span>(<span class="str">"A200"</span>,<span class="num">1000.00</span>,<span class="num">2</span>));
+sp[<span class="num">1</span>].setSalesHistory(<span class="kw">new</span> <span class="cl">Sales</span>(<span class="str">"A300"</span>,<span class="num">2550.40</span>,<span class="num">10</span>));
+System.out.println(sp[<span class="num">2</span>].getId());
+System.out.println(sp[<span class="num">0</span>].getCount());
+System.out.println(sp[<span class="num">1</span>].getSalesHistory(<span class="num">0</span>).getValue());
+System.out.println(sp[<span class="num">0</span>].calcTotalSales());`,
+   options:['102 / 2 / 2550.4 / 5000.0','102 / 2 / 300.0 / 5000.0','102 / 2 / 2550.4 / 3000.0','null / 2 / 2550.4 / 5000.0'],
+   answer:0, explanation:'sp[2].getId()="102". sp[0].getCount()=2 (two sales added). sp[1].getSalesHistory(0).getValue()=2550.40 (first sale on sp[1]). sp[0].calcTotalSales()=300*10+1000*2=5000.0. This is the EXACT output from 2017 Q14(d).'},
+
+  {id:'ib2',cat:'concept',concept:'Class vs instantiation — IB 2017 Q13a',title:'IB 2017: class vs instantiation',
+   prompt:'Using an example from a company administration program, distinguish between a class and an instantiation of a class. [3 marks]',
+   options:['A class is a specific stored object; an instantiation is the template it came from','A class is a blueprint/template that defines attributes and methods (e.g. SalesPerson defines id, salesHistory). An instantiation is a specific object created in memory using new (e.g. salesPeople[0] = new SalesPerson("100"))','A class and instantiation are the same — both represent one salesperson','An instantiation only exists at compile time; the class exists at runtime'],
+   answer:1, explanation:'IB 2017 Q13(a): class = template with defined fields and methods. Instantiation = actual object created with new. SalesPerson is the class; salesPeople[0] = new SalesPerson("100") is an instantiation. [3 marks: class definition 1, instantiation definition 1, example 1]'},
+
+  {id:'ib3',cat:'concept',concept:'Inheritance in GUI — IB 2017 Q13b',title:'IB 2017: inheritance in GUI design',
+   prompt:'The administration program has multiple GUI modules that share a similar design but differ per module. By giving two examples, explain how the principles of inheritance can be incorporated into the design. [4 marks]',
+   options:['All GUIs must be identical — inheritance cannot help here','A base GUI class (e.g. BaseWindow) holds shared elements: toolbar, layout, close button. SalesGUI extends BaseWindow adding sales-specific tables. PayrollGUI extends BaseWindow adding salary fields. Each subclass inherits common code without rewriting it.','Inheritance means copying the GUI code into each module manually','Inheritance only applies to data fields, not GUI components'],
+   answer:1, explanation:'IB 2017 Q13(b): Create a parent GUI class with shared elements. Subclasses extend it and add module-specific content. Two examples: Sales module, Payroll module (or any two). Key marks: identifies parent class [1], each example shows correct use of extends [1 each], explains code reuse [1].'},
+
+  {id:'ib4',cat:'concept',concept:'Accessor methods — IB 2017 Q14b',title:'IB 2017: why are accessor methods necessary?',
+   prompt:'Explain why accessor methods are necessary for the SalesPerson class. All instance variables are private. [3 marks]',
+   options:['So other classes can bypass private access and modify variables directly','Private variables cannot be accessed from outside the class. Accessor methods (getters) provide controlled read access without exposing the variable directly. For example, getId() lets Main read the id without being able to change it — protecting data integrity.','Accessor methods make the program run faster','They are only needed when variables are public'],
+   answer:1, explanation:'IB 2017 Q14(b): private = no direct outside access. Accessors = controlled read access (encapsulation). 3 marks: explains private restriction [1], explains what accessors do [1], links to encapsulation/protection [1].'},
+
+  {id:'ib5',cat:'concept',concept:'UML HAS-A — IB 2017 Q14c',title:'IB 2017: SalesPerson HAS-A Sales — what does this mean in UML?',
+   prompt:'SalesPerson has: private Sales[] salesHistory\nWhat type of OOP relationship is this, and how is it shown in UML? [2 marks]',
+   options:['IS-A (inheritance) — shown with a hollow arrow from Sales to SalesPerson','HAS-A (composition/aggregation) — SalesPerson contains an array of Sales objects. In UML shown with a solid line and diamond (◆) on the SalesPerson side','Polymorphism — shown with a dashed line','There is no special UML symbol for this relationship'],
+   answer:1, explanation:'SalesPerson HAS-A Sales[] is aggregation/composition — one class holds objects of another as a field. UML: solid line with diamond (◆) at SalesPerson end. Different from IS-A (inheritance) which uses a hollow triangle arrow. 2017 Q14(c)(i).'},
+
+  {id:'ib6',cat:'code',concept:'Complete constructor — IB 2017 Q14a',title:'IB 2017: complete SalesPerson constructor',
+   prompt:'Complete the constructor for SalesPerson. It takes String id and should initialize the instance variables.\n\npublic SalesPerson(String id)\n{\n    // code missing\n}',
+   hint:'There are 3 instance variables: id (String), salesHistory (Sales[], size 100), count (int = 0)',
+   solution:`public SalesPerson(String id)
+{
+    this.id = id;
+    salesHistory = new Sales[100];
+    count = 0;
+}`},
+
+  {id:'ib7',cat:'code',concept:'calcTotalSales — IB 2017 Q14e',title:'IB 2017: calcTotalSales() method',
+   prompt:'Construct calcTotalSales() in SalesPerson. It calculates the total value of all sales. Each Sales object has getValue() (price per item) and getQuantity() (number sold). Use count to know how many sales exist.',
+   hint:'total += salesHistory[i].getValue() * salesHistory[i].getQuantity()',
+   solution:`public double calcTotalSales()
+{
+    double total = 0;
+    for(int i = 0; i < count; i++) {
+        total += salesHistory[i].getValue() * salesHistory[i].getQuantity();
+    }
+    return total;
+}`},
+
+  {id:'ib8',cat:'code',concept:'highest() — IB 2017 Q14f',title:'IB 2017: highest() — find best salesperson',
+   prompt:'Construct highest() in the Main class. salesPeople is a SalesPerson array of 100 objects. Return the ID (String) of the salesperson with the largest total sales value. Use calcTotalSales().',
+   hint:'Track maxIndex. Loop, compare calcTotalSales(). At end, return salesPeople[maxIndex].getId()',
+   solution:`public String highest()
+{
+    int maxIndex = 0;
+    for(int i = 1; i < salesPeople.length; i++) {
+        if(salesPeople[i].calcTotalSales() > salesPeople[maxIndex].calcTotalSales()) {
+            maxIndex = i;
+        }
+    }
+    return salesPeople[maxIndex].getId();
+}`},
+
+  {id:'ib9',cat:'code',concept:'addSales — IB 2017 Q14g',title:'IB 2017: addSales() method',
+   prompt:'Construct addSales(Sales s, String id) in the Main class. Search salesPeople for the salesperson with matching id. If found, call setSalesHistory(s) on them. Assume the ID is valid.',
+   hint:'Loop with getId().equals(id) to find match. Call setSalesHistory(s) when found.',
+   solution:`public void addSales(Sales s, String id)
+{
+    for(int i = 0; i < salesPeople.length; i++) {
+        if(salesPeople[i].getId().equals(id)) {
+            salesPeople[i].setSalesHistory(s);
+            return;
+        }
+    }
+}`},
+
+  {id:'ib10',cat:'concept',concept:'Polymorphism in suite — IB 2017 Q14i',title:'IB 2017: discuss polymorphism in SalesPerson suite',
+   prompt:'SalesPerson has two constructors: SalesPerson(String id) and SalesPerson(String id, Sales[] s, int c). Discuss the use of polymorphism in this suite. [3 marks]',
+   options:['There is no polymorphism — the two constructors are different classes','Method overloading: both constructors share the name SalesPerson but have different parameters. Java chooses based on which arguments are passed. This is compile-time polymorphism. You could also use the second constructor for transferring a salesperson between branches with their existing records.','Method overriding: the second constructor replaces the first','Polymorphism only applies to methods, not constructors'],
+   answer:1, explanation:'2017 Q14(i): two constructors = method overloading = polymorphism. Same method name, different parameter lists. Java resolves at compile-time. 3 marks: identifies overloading [1], explains how Java selects [1], contextual use (e.g. new vs transferred employee) [1].'},
+
+  {id:'ib11',cat:'concept',concept:'LinkedList replacing array — IB 2017 Q15a',title:'IB 2017: replace Sales[] with LinkedList',
+   prompt:'The salesHistory array in SalesPerson is to be replaced with a LinkedList object. Identify the statement that replaces:\nprivate Sales[] salesHistory;\n[2 marks]',
+   options:['private List salesHistory = new List();','private LinkedList<Sales> salesHistory = new LinkedList<Sales>();','private Sales salesHistory = new LinkedList();','LinkedList salesHistory[];'],
+   answer:1, explanation:'IB 2017 Q15(a): private LinkedList<Sales> salesHistory = new LinkedList<Sales>(); — needs the type parameter <Sales> [1] and the declaration/instantiation syntax [1].'},
+
+  // ── IB 2016 PAPER — Client/Room/Dates hotel system ────
+
+  {id:'ib12',cat:'output',concept:'Method chaining — 2016 pattern',title:'What gets printed?',
+   code:`<span class="kw">class</span> <span class="cl">Dates</span> {
+  <span class="kw">private int</span> day, month, year;
+  <span class="kw">public</span> <span class="cl">Dates</span>(<span class="kw">int</span> d, <span class="kw">int</span> m, <span class="kw">int</span> y){day=d; month=m; year=y;}
+  <span class="kw">public int</span> getDay(){<span class="kw">return</span> day;}
+  <span class="kw">public int</span> getMonth(){<span class="kw">return</span> month;}
+}
+<span class="kw">class</span> <span class="cl">Client</span> {
+  <span class="kw">private</span> <span class="cl">Dates</span> arrive;
+  <span class="kw">public</span> <span class="cl">Client</span>(<span class="cl">Dates</span> d){arrive = d;}
+  <span class="kw">public</span> <span class="cl">Dates</span> getArrive(){<span class="kw">return</span> arrive;}
+}
+<span class="cl">Dates</span> d = <span class="kw">new</span> <span class="cl">Dates</span>(<span class="num">5</span>, <span class="num">5</span>, <span class="num">2016</span>);
+<span class="cl">Client</span> c = <span class="kw">new</span> <span class="cl">Client</span>(d);
+System.out.println(c.getArrive().getDay());
+System.out.println(c.getArrive().getMonth());`,
+   options:['5 then 2016','5 then 5','2016 then 5','Compile error'],
+   answer:1, explanation:'c.getArrive() returns the Dates object stored in arrive. .getDay() returns 5. .getMonth() returns 5. This is method chaining through a custom type — the HAS-A relationship in action. Core 2016 IB pattern.'},
+
+  {id:'ib13',cat:'concept',concept:'HAS-A relationship — 2016 Q14a',title:'IB 2016: state Client–Room relationship',
+   prompt:'Client has: private Room bedroom;\nState the relationship between Client and Room. [1 mark]',
+   options:['IS-A — Client extends Room','HAS-A (aggregation/composition) — Client contains a Room object as an instance variable','USES-A — Client temporarily borrows a Room','IS-A — Room extends Client'],
+   answer:1, explanation:'Client HAS-A Room — the bedroom field stores a Room object inside Client. This is composition/aggregation. IS-A would mean Client inherits from Room, which is wrong. 2016 Q14(a) [1 mark].'},
+
+  {id:'ib14',cat:'concept',concept:'Advantage of Dates class — 2016 Q14c',title:'IB 2016: advantage of using a Dates class',
+   prompt:'The hotel program uses a Dates class (with day, month, year) instead of three separate int variables. Outline ONE advantage of using a class to represent dates. [2 marks]',
+   options:['It uses less memory than three integers','The Dates class encapsulates related data AND behaviour together. Methods like StayDays() can be defined inside the class and reused anywhere — any class that needs to calculate nights just calls Dates.StayDays(arrive, leave) without rewriting the logic.','Dates objects are faster to compare than integers','It automatically prevents double-booking'],
+   answer:1, explanation:'2016 Q14(c): encapsulation — data (day/month/year) and behaviour (StayDays) are grouped. Reusability — any class can call the static method. This is the exact IB mark scheme answer [2 marks: benefit stated + explanation].'},
+
+  {id:'ib15',cat:'concept',concept:'Static method — 2016 pattern',title:'IB 2016: why is StayDays() static?',
+   prompt:'In the Dates class:\npublic static int StayDays(Dates x, Dates y)\n\nExplain why StayDays is declared as static.',
+   options:['Because it returns an int, not an object','Because StayDays operates on two Dates passed as parameters — it does not use the calling object\'s own data. No specific Dates instance needs to exist to call it. You call it as Dates.StayDays(arrive, leave) on the class itself.','Static methods always run faster','Because it is private'],
+   answer:1, explanation:'Static methods belong to the class, not any one instance. StayDays takes two Dates as parameters — it doesn\'t use this.day, this.month etc. So no instance is needed. Calling code: int nights = Dates.StayDays(c.getArrive(), c.getLeave()).'},
+
+  {id:'ib16',cat:'code',concept:'UML for Room — 2016 Q14b',title:'IB 2016: which UML entry is correct for Room?',
+   prompt:'Room class has:\nprivate int roomNumber\nprivate int beds\nprivate double price\nprivate boolean empty\n\nWhich UML entry is correct?',
+   options:['+ roomNumber : int','- roomNumber : int','roomNumber : private int','# roomNumber : int'],
+   answer:1, explanation:'UML: - = private, + = public. Format is: visibility name : type. So private int roomNumber → - roomNumber : int. The type comes AFTER the colon — opposite to Java declaration syntax. 2016 Q14(b).'},
+
+  {id:'ib17',cat:'code',concept:'findRooms — 2016 Q14d',title:'IB 2016: findRooms() — search array with conditions',
+   prompt:'Construct findRooms() that searches allRooms[] (100 Room objects) and prints the roomNumber of every room that is empty AND has 2 beds.\nRoom has: isEmpty() → boolean, getBeds() → int, getRoomNumber() → int\n\npublic void findRooms() {',
+   hint:'Loop i from 0 to allRooms.length-1. Check allRooms[i].isEmpty() && allRooms[i].getBeds() == 2',
+   solution:`public void findRooms() {
+    for(int i = 0; i < allRooms.length; i++) {
+        if(allRooms[i].isEmpty() && allRooms[i].getBeds() == 2) {
+            System.out.println(allRooms[i].getRoomNumber());
+        }
+    }
+}`},
+
+  {id:'ib18',cat:'code',concept:'bill() with custom types — 2016 Q14e',title:'IB 2016: bill() using Dates.StayDays()',
+   prompt:'Construct bill() in the Client class. It should calculate and output:\n- client\'s name\n- room number\n- arrive date\n- leave date\n- total nights (use Dates.StayDays(arrive, leave))\n- total cost (nights × bedroom.getPrice())\n\npublic void bill() {',
+   hint:'int nights = Dates.StayDays(arrive, leave);\ndouble cost = nights * bedroom.getPrice();',
+   solution:`public void bill() {
+    int nights = Dates.StayDays(arrive, leave);
+    double cost = nights * bedroom.getPrice();
+    System.out.println("Name: " + getName());
+    System.out.println("Room: " + bedroom.getRoomNumber());
+    System.out.println("Arrive: " + arrive.getDay() + "/" + arrive.getMonth());
+    System.out.println("Leave: " + leave.getDay() + "/" + leave.getMonth());
+    System.out.println("Nights: " + nights);
+    System.out.println("Total: " + cost);
+}`},
+
+  {id:'ib19',cat:'code',concept:'GClient subclass — 2016 Q15a',title:'IB 2016: construct GClient class',
+   prompt:'GClient extends Client. It adds a private String groupName field.\nConstructor takes the same parameters as Client PLUS String gn.\nCall super() for all Client params, then set groupName.\n\npublic class GClient extends Client {',
+   hint:'super(id, c, dateIn, dateOut, r) must be FIRST in the constructor',
+   solution:`public class GClient extends Client {
+    private String groupName;
+
+    public GClient(int id, String c, Dates dateIn, Dates dateOut, Room r, String gn) {
+        super(id, c, dateIn, dateOut, r);
+        groupName = gn;
+    }
+
+    public String getGroupName() { return groupName; }
+}`},
+
+  {id:'ib20',cat:'concept',concept:'Library classes discussion — 2016 Q17c',title:'IB 2016: how do library classes help newClient() and todayClients()?',
+   prompt:'Discuss how the use of library classes simplifies the construction of methods like newClient() and todayClients(). [4 marks]',
+   options:['Library classes make the program run faster with compiled machine code','Library classes like LinkedList provide pre-written, tested methods: add(), remove(), get(), indexOf(). The programmer does not need to implement linked list traversal or insertion logic from scratch. newClient() can call add() or a position-based insert; todayClients() can iterate using standard iterators. This reduces development time and bugs.','Library classes automatically sort data','Library classes are the only way to implement linked lists in Java'],
+   answer:1, explanation:'IB 2016 Q17(c): library classes = pre-written tested code [1], specific methods (add/remove/get) [1], reduces programmer work [1], reduces errors [1]. Key: name specific methods and link them to the context of the two methods.'},
+
+  {id:'ib21',cat:'output',concept:'Binary tree print — 2017 Q16b',title:'IB 2017: what order does this print() output?',
+   code:`<span class="kw">public void</span> print(<span class="cl">Node</span> node) {
+  <span class="kw">if</span>(node == <span class="kw">null</span>) <span class="kw">return</span>;
+  print(node.left);
+  print(node.right);
+  System.out.println(node.data);
+}
+<span class="cmt">// BST built from: 33, 12, 14, 50</span>
+<span class="cmt">//     33</span>
+<span class="cmt">//    /  \\</span>
+<span class="cmt">//   12   50</span>
+<span class="cmt">//    \\</span>
+<span class="cmt">//    14</span>
+print(root);`,
+   options:['33 12 14 50','12 14 50 33','14 12 50 33','12 50 14 33'],
+   answer:2, explanation:'This is POST-ORDER (left, right, root). Start at 33: go left→12, 12 has no left, go right→14, 14 has no children so print 14. Back to 12: no right left, print 12. Back to 33: go right→50, no children, print 50. Back to 33: print 33. Output: 14, 12, 50, 33. IB 2017 Q16(b).'},
+
+  {id:'ib22',cat:'code',concept:'smallest() recursive BST — 2017 Q16c',title:'IB 2017: construct smallest() for a BST',
+   prompt:'Construct the method smallest() that returns the smallest value in a binary search tree. The tree is not empty. Assume data in each node is an int.\n\nint s = smallest(root);\n\npublic int smallest(Node node) {',
+   hint:'In a BST, smallest value is always the leftmost node. If node.left == null, this node is the smallest.',
+   solution:`public int smallest(Node node) {
+    if(node.left == null) {
+        return node.data;
+    }
+    return smallest(node.left);
+}`},
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -1648,6 +1870,14 @@ window.showToast = function(msg) {
 // BOOT
 // ═══════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
+  // Hard fallback — if Supabase CDN or auth hangs, force app visible after 5s
+  setTimeout(() => {
+    const menu = document.getElementById('menuScreen');
+    if(menu && menu.style.display !== 'block') {
+      renderSignIn();
+      showApp();
+    }
+  }, 5000);
   initAuth();
 });
 </script>
